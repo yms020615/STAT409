@@ -1,0 +1,55 @@
+---
+title: |
+  | \LARGE STAT409 Homework #1
+author: |
+  | \large \rm 2021320322 / Minseo Yoon
+date: |
+  | \rm \today
+output:
+  pdf_document
+fontsize: 11pt
+---
+
+# (a)
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(nycflights13)
+library(tidyverse)
+
+flights <- nycflights13::flights
+flights %>%
+  group_by(month) %>%
+  summarize(cancelled_proportion = 
+              sum(is.na(dep_time) | is.na(arr_time)) / n()) %>%
+  arrange(desc(cancelled_proportion))
+```
+It was canceled at the largest rate in February and the smallest rate in October.
+
+December and February seem to be at the top of the list due to winter snow.
+
+Similarly, many flights appear to be at the top of the list, with June and July canceled due to summer rain.
+
+# (b)
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(lubridate)
+
+flights %>%
+  filter(!is.na(tailnum)) %>%
+  group_by(tailnum) %>%
+  summarize(num = n()) %>%
+  arrange(desc(num)) %>%
+  head(1)
+```
+The N725MQ flew the most with 575.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+flights %>%
+  filter(tailnum == 'N725MQ') %>%
+  mutate(date = paste(sprintf('%04d-%02d-%02d', year, month, day)), 
+         weeks = week(date)) %>%
+  group_by(weeks) %>%
+  summarize(num = n()) %>%
+  ggplot(aes(x = weeks, y = num)) +
+  geom_point() +
+  geom_line() +
+  ggtitle('Number of trips per week over 2013')
+```

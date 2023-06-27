@@ -1,0 +1,108 @@
+---
+title: |
+  | \LARGE STAT409 Homework3
+author: |
+  | \large \rm 2021320322 / Minseo Yoon
+date: |
+  | \rm \today
+output:
+  pdf_document:
+    latex_engin: pdflatex
+    extra_dependencies: ["kotex"]
+mainfont: NanumGothic
+fontsize: 11pt
+---
+
+# 1. Assuming floating number representation with B = 10 and d = 4, show that $X^{T}X$ is not invertible (Hint: Compute its determinant.)
+
+\newpage 
+
+# 2. Hitters’s data that record salary of Major League Baseball (MLB) players is available in R. You can download the data by running the following code.
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(ISLR)
+data("Hitters")
+Hitters <- na.omit(Hitters) # remove missing values
+
+# response: Salary of Baseball Player
+y <- Hitters$Salary # y
+# predictors: Players Stats
+X <- cbind(Hitters$AtBat, # x1: number of times at batting in the game 
+           Hitters$Hits, # x2: number of hits 
+           Hitters$HmRun, # x3: number of homeruns 
+           Hitters$Runs, # x4: number of runs 
+           Hitters$Walks, # x5: number of walks
+           Hitters$Years) # x6: number of years played in the league
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+n <- nrow(X); p <- ncol(X)
+my <- mean(y); mX <- apply(X, 2, mean)
+y.c <- y - my; X.c <- t(t(X) - mX)
+```
+
+(a) Please write your own code to compute the OLS estimator of $\beta$, fitted values, and residuals for the linear regression for the Hitters data problem using “qr()” function in “R”. (Hint: You may simply apply the code given in the Lecture note)
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+obj <- qr(X.c)
+Q <- qr.Q(obj, complete = T)
+R <- matrix(0, 6, 6)
+R[upper.tri(R, diag = T)] <- obj$qr[upper.tri(obj$qr, diag = T)]
+
+z <- crossprod(Q, y.c)
+z1 <- z[1:6]
+z2 <- z[-c(1:6)]
+
+beta.hat <- backsolve(R, z1)
+beta0.hat <- my - beta.hat %*% mX
+c(beta0.hat, beta.hat)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+y.hat <- Q %*% c(z1, rep(0, length(z2))) + my
+resid <- Q %*% c(rep(0, length(z1)), z2)
+head(cbind(y.hat, resid, y - y.hat))
+```
+
+(b) Please compare your results obtained from (a) to the result from “lm()” given below:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+obj <- lm(y ~ X)
+est <- coef(obj)
+y.hat <- fitted(obj)
+resid2 <- resid(obj)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+cbind(c(beta0.hat, beta.hat), est)
+```
+직접 코딩한 QR 분해 기반으로 추정한 $\beta$의 값과 lm() 함수에서 추정한 $\beta$의 값이 일치한다.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+head(cbind(resid, resid2))
+```
+직접 코딩한 QR 분해 기반으로 계산한 잔차와 lm() 함수에서 계산한 잔차가 일치한다.
+
+# 3. (Hitters’s data) Apply OLS regression, LASSO, Ridge, and Elastic Net Regression to Hitters’s data (with appropriately selected $\lambda$ for the latter regularized methods), and provide their coefficient estimates.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(glmnet)
+
+obj.ols <- lm(y ~ X)
+
+obj <- glmnet(X, y)
+grid <- obj$lambda
+
+obj.cv.rr <- cv.glmnet(X, y, alpha = 0, lambda = grid)
+obj.cv.lasso <- cv.glmnet(X, y, alpha = 1, lambda = grid)
+obj.cv.net <- cv.glmnet(X, y, alpha = 0.5, lambda = grid)
+
+obj.rr <- glmnet(X, y, alpha = 0, lambda = obj.cv.rr$lambda.min)
+obj.lasso <- glmnet(X, y, alpha = 1, lambda = obj.cv.lasso$lambda.min)
+obj.net <- glmnet(X, y, alpha = 0.5, lambda = obj.cv.net$lambda.min)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+result <- cbind(coef(obj.ols), coef(obj.rr), coef(obj.lasso), coef(obj.net))
+colnames(result) <- c("OLS", "Ridge", "LASSO", "ElasticNet")
+result
+```
